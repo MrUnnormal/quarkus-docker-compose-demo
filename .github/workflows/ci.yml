@@ -18,4 +18,19 @@ jobs:
         with:
           java-version: 11
       - name: Build
-        run: ./mvnw verify -B
+        run: ./mvnw clean package -Dquarkus.package.type=uber-jar -B
+      - name: install ssh key
+        uses: webfactory/ssh-agent@v0.4.1
+        with:
+          ssh-private-key: ${{ secrets.ORAVM }}
+      - name: create .ssh/known_hosts
+        run: |
+          ssh-keyscan -H -t rsa -v ${{ secrets.ORAVM_IP }}  >> ~/.ssh/known_hosts
+      - name: start docker db
+        run: |
+          docker run --ulimit memlock=-1:-1 -it --rm=true --memory-swappiness=0 --name postgres-db -e POSTGRES_USER=app -e POSTGRES_PASSWORD=app -e POSTGRES_DB=db -p 5432:5432 postgres:12.4
+      - name: copy binaries to oravm
+        run: |
+          echo "Hallo ich bin hier"
+          ls -l target/
+          scp target/quarkus-docker-compose-1.0.0-SNAPSHOT-runner.jar ${{ secrets.ORAVM_USER }}@${{ secrets.ORAVM_IP }}:
